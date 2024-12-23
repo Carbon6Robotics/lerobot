@@ -74,8 +74,10 @@ import torch
 import torch.utils.data
 import tqdm
 import yaml
+from rerun_loader_urdf import URDFLogger
 
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
+from lerobot.scripts.urdf_helper import link_to_world_transform, log_angle_rot
 
 
 class EpisodeSampler(torch.utils.data.Sampler):
@@ -150,6 +152,7 @@ def visualize_dataset(
             rrb.TimeSeriesView(origin="/action", contents="/action/**", name="Action"),
             rrb.TimeSeriesView(origin="/next", contents="/next/**", name="Next"),
             rrb.TimeSeriesView(origin="/state", contents="/state/**", name="State"),
+            rrb.Spatial3DView(contents="/**", name="Robot"),
             name="Data",
         ),
     )
@@ -158,6 +161,10 @@ def visualize_dataset(
     rr.serve_web(open_browser=True, web_port=web_port, ws_port=ws_port, default_blueprint=my_blueprint)
 
     logging.info("Logging to Rerun")
+
+    urdf_logger = URDFLogger("/home/joon/Workspace/sigma_kit/models/m0609.urdf")
+    urdf_logger.log()
+    # print(urdf_logger.entity_to_transform)
 
     for batch in tqdm.tqdm(dataloader, total=len(dataloader)):
         # iterate over the batch
@@ -180,6 +187,20 @@ def visualize_dataset(
                 for dim_idx, val in enumerate(batch["observation.state"][i]):
                     motor_name = metadata["features"]["observation.state"]["names"]["motors"][dim_idx]
                     rr.log(f"state/{motor_name}", rr.Scalar(val.item()))
+
+                joint_angles = (batch["observation.state"][i][0:6]).tolist()
+                # print("--------")
+                # print(joint_angles)
+                joint_origins = []
+                for joint_idx, angle in enumerate(joint_angles):
+                    # Log robot's model
+                    transform = link_to_world_transform(
+                        urdf_logger.entity_to_transform, joint_angles, joint_idx + 1
+                    )
+                    joint_org = (transform @ np.array([0.0, 0.0, 0.0, 1.0]))[:3]
+                    joint_origins.append(joint_org)
+
+                    log_angle_rot(urdf_logger.entity_to_transform, joint_idx + 1, angle)
 
             if "next.done" in batch:
                 rr.log("next/done", rr.Scalar(batch["next.done"][i].item()))
