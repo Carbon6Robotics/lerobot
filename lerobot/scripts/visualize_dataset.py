@@ -63,7 +63,8 @@ local$ rerun ws://localhost:9087
 
 import argparse
 import logging
-import time
+
+# import time
 from pathlib import Path
 from typing import Iterator
 
@@ -112,7 +113,7 @@ def visualize_dataset(
     web_port: int = 9090,
     ws_port: int = 9087,
     # save: bool = False,
-    output_dir: Path | None = None,
+    # output_dir: Path | None = None,
 ) -> Path | None:
     # if save:
     #     assert (
@@ -257,12 +258,12 @@ def main():
         default=None,
         help="Root directory for the dataset stored locally (e.g. `--root data`). By default, the dataset will be loaded from hugging face cache folder, or downloaded from the hub if available.",
     )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=None,
-        help="Directory path to write a .rrd file when `--save 1` is set.",
-    )
+    # parser.add_argument(
+    #     "--output-dir",
+    #     type=Path,
+    #     default=None,
+    #     help="Directory path to write a .rrd file when `--save 1` is set.",
+    # )
     parser.add_argument(
         "--batch-size",
         type=int,
@@ -315,11 +316,17 @@ def main():
     root = kwargs.pop("root")
     local_files_only = kwargs.pop("local_files_only")
 
+    # Load data set
     logging.info("Loading dataset")
     dataset = LeRobotDataset(repo_id, root=root, local_files_only=local_files_only)
-    with open(Path(root) / "meta" / "info.json", "r") as f:
+
+    # Load meta data
+    meta_data_path = Path(root) / "meta" / "info.json"
+    logging.info(f"Loading metadata from {str(meta_data_path)}")
+    with open(meta_data_path, "r") as f:
         metadata = yaml.safe_load(f)
 
+    # Visualize data
     visualize_dataset(dataset, metadata, **vars(args))
 
 
