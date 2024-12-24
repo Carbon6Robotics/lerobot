@@ -105,7 +105,6 @@ def to_hwc_uint8_numpy(chw_float32_torch: torch.Tensor) -> np.ndarray:
 
 def visualize_dataset(
     dataset: LeRobotDataset,
-    metadata: LeRobotDatasetMetadata,
     episode_index: int,
     batch_size: int = 32,
     num_workers: int = 0,
@@ -180,13 +179,13 @@ def visualize_dataset(
             # display each dimension of action space (e.g. actuators command)
             if "action" in batch:
                 for dim_idx, val in enumerate(batch["action"][i]):
-                    motor_name = metadata["features"]["action"]["names"]["motors"][dim_idx]
+                    motor_name = dataset.meta.features["action"]["names"]["motors"][dim_idx]
                     rr.log(f"action/{motor_name}", rr.Scalar(val.item()))
 
             # display each dimension of observed state space (e.g. agent position in joint space)
             if "observation.state" in batch:
                 for dim_idx, val in enumerate(batch["observation.state"][i]):
-                    motor_name = metadata["features"]["observation.state"]["names"]["motors"][dim_idx]
+                    motor_name = dataset.meta.features["observation.state"]["names"]["motors"][dim_idx]
                     rr.log(f"state/{motor_name}", rr.Scalar(val.item()))
 
                 joint_angles = (batch["observation.state"][i][0:6]).tolist()
@@ -320,14 +319,8 @@ def main():
     logging.info("Loading dataset")
     dataset = LeRobotDataset(repo_id, root=root, local_files_only=local_files_only)
 
-    # Load meta data
-    meta_data_path = Path(root) / "meta" / "info.json"
-    logging.info(f"Loading metadata from {str(meta_data_path)}")
-    with open(meta_data_path, "r") as f:
-        metadata = yaml.safe_load(f)
-
     # Visualize data
-    visualize_dataset(dataset, metadata, **vars(args))
+    visualize_dataset(dataset, **vars(args))
 
 
 if __name__ == "__main__":
