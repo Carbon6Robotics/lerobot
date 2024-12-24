@@ -75,10 +75,10 @@ import torch
 import torch.utils.data
 import tqdm
 import yaml
-from rerun_loader_urdf import URDFLogger
 
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
-from lerobot.scripts.urdf_helper import link_to_world_transform, log_angle_rot
+from lerobot.scripts.visualization_helper.rerun_loader_urdf import URDFLogger
+from lerobot.scripts.visualization_helper.urdf_helper import link_to_world_transform, log_angle_rot
 
 
 class EpisodeSampler(torch.utils.data.Sampler):
