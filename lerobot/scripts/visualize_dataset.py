@@ -111,6 +111,7 @@ def visualize_dataset(
     mode: str = "local",
     web_port: int = 9090,
     ws_port: int = 9087,
+    model_dir: Path | None = None,
     # save: bool = False,
     # output_dir: Path | None = None,
 ) -> Path | None:
@@ -161,7 +162,7 @@ def visualize_dataset(
 
     logging.info("Logging to Rerun")
 
-    urdf_logger = URDFLogger("/home/joon/Workspace/sigma_kit/models/m0609.urdf")
+    urdf_logger = URDFLogger(str((Path(model_dir) / "m0609.urdf").resolve()))
     urdf_logger.log()
     # print(urdf_logger.entity_to_transform)
 
@@ -296,6 +297,12 @@ def main():
         type=int,
         default=9087,
         help="Web socket port for rerun.io when `--mode distant` is set.",
+    )
+    parser.add_argument(
+        "--model-dir",
+        dest="model_dir",
+        type=str,
+        help="Path to model directory, e.g., ./models",
     )
     # parser.add_argument(
     #     "--save",

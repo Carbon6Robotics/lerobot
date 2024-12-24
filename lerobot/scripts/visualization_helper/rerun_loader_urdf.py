@@ -86,7 +86,7 @@ class URDFLogger:
 
         if isinstance(visual.geometry, urdf_parser.Mesh):
             resolved_path = resolve_ros_path(visual.geometry.filename)
-            resolved_path = visual.geometry.filename
+            # resolved_path = visual.geometry.filename
             mesh_scale = visual.geometry.scale
             mesh_or_scene = trimesh.load_mesh(resolved_path)
             if mesh_scale is not None:
@@ -184,14 +184,20 @@ def resolve_ros_path(path: str) -> str:
     if path.startswith("package://"):
         # Relative path from package file
         path = pathlib.Path(path)
+
         # package_name = path.parts[1]
         relative_path = pathlib.Path(*path.parts[2:])
 
-        package_path = pathlib.Path(__file__).resolve().parent.parent.parent / "models"
+        # Find repo path
+        repo_name = "lerobot"
+        for p in reversed(pathlib.Path(__file__).resolve().parents):
+            if p.name == repo_name:
+                package_path = p / "models"
+                break
         # package_path = resolve_ros1_package(package_name) or resolve_ros2_package(package_name)
 
         if not (package_path / "package.xml").exists():
-            raise ValueError(f"Could not resolve {path}. {package_path}/package.xml must exist.")
+            raise ValueError(f"Could not resolve {path}. {str(package_path)}/package.xml must exist.")
         # if package_path is None:
         #     raise ValueError(
         #         f"Could not resolve {path}."
