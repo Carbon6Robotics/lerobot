@@ -74,9 +74,9 @@ import rerun.blueprint as rrb
 import torch
 import torch.utils.data
 import tqdm
-import yaml
 
-from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
+# import yaml
+from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.scripts.visualization_helper.rerun_loader_urdf import URDFLogger
 from lerobot.scripts.visualization_helper.urdf_helper import link_to_world_transform, log_angle_rot
 
@@ -139,14 +139,13 @@ def visualize_dataset(
     my_blueprint = rrb.Blueprint(
         rrb.Tabs(
             rrb.Grid(
-                rrb.Spatial2DView(origin="/observation/images/", contents="/observation/images/cam_high"),
-                rrb.Spatial2DView(
-                    origin="/observation/images", contents="/observation/images/cam_left_wrist"
-                ),
-                rrb.Spatial2DView(origin="/observation/images", contents="/observation/images/cam_low"),
-                rrb.Spatial2DView(
-                    origin="/observation/images", contents="/observation/images/cam_right_wrist"
-                ),
+                *[
+                    rrb.Spatial2DView(
+                        origin=key.replace(".", "/"),  # join upto last part
+                        contents=key.replace(".", "/"),  # full entity path
+                    )
+                    for key in dataset.meta.camera_keys
+                ],
                 name="Camera Images",
             ),
             rrb.TimeSeriesView(origin="/action", contents="/action/**", name="Action"),
