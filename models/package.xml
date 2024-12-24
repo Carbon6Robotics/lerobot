@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package>
+  <name>carbon_six</name>
+  <version>1.0.1</version>
+  <description>
+    This package contains robot simulation models used by CarbonSix. URDF file has minor fix from the original version to work with the visualization tool.
+  </description>
+  <author email="terry.suh@carbon6robotics.com">Terry Suh @ CarbonSix</author>
+  <maintainer email="terry.suh@carbon6robotics.com">Terry Suh @ CarbonSix</maintainer>
+</package>

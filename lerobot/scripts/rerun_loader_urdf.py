@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import pathlib
 
-# import pathlib
 # from typing import Optional
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -85,7 +85,7 @@ class URDFLogger:
             transform[:3, :3] = st.Rotation.from_euler("xyz", visual.origin.rpy).as_matrix()
 
         if isinstance(visual.geometry, urdf_parser.Mesh):
-            # resolved_path = resolve_ros_path(visual.geometry.filename)
+            resolved_path = resolve_ros_path(visual.geometry.filename)
             resolved_path = visual.geometry.filename
             mesh_scale = visual.geometry.scale
             mesh_or_scene = trimesh.load_mesh(resolved_path)
@@ -179,26 +179,32 @@ def log_trimesh(entity_path: str, mesh: trimesh.Trimesh) -> None:
     # print(f"logged {entity_path} {mesh.vertices} {mesh.faces}")
 
 
-# def resolve_ros_path(path: str) -> str:
-#     """Resolve a ROS path to an absolute path."""
-#     if path.startswith("package://"):
-#         path = pathlib.Path(path)
-#         package_name = path.parts[1]
-#         relative_path = pathlib.Path(*path.parts[2:])
+def resolve_ros_path(path: str) -> str:
+    """Resolve a ROS path to an absolute path."""
+    if path.startswith("package://"):
+        # Relative path from package file
+        path = pathlib.Path(path)
+        # package_name = path.parts[1]
+        relative_path = pathlib.Path(*path.parts[2:])
 
-#         package_path = resolve_ros1_package(package_name) or resolve_ros2_package(package_name)
+        package_path = pathlib.Path(__file__).resolve().parent.parent.parent / "models"
+        # package_path = resolve_ros1_package(package_name) or resolve_ros2_package(package_name)
 
-#         if package_path is None:
-#             raise ValueError(
-#                 f"Could not resolve {path}."
-#                 f"Replace with relative / absolute path, source the correct ROS environment, or install {package_name}."
-#             )
+        if not (package_path / "package.xml").exists():
+            raise ValueError(f"Could not resolve {path}. {package_path}/package.xml must exist.")
+        # if package_path is None:
+        #     raise ValueError(
+        #         f"Could not resolve {path}."
+        #         f"Replace with relative / absolute path, source the correct ROS environment, or install {package_name}."
+        #     )
 
-#         return str(package_path / relative_path)
-#     elif str(path).startswith("file://"):
-#         return path[len("file://") :]
-#     else:
-#         return path
+        return str(package_path / relative_path)
+    elif str(path).startswith("file://"):
+        # Absolute path
+        return path[len("file://") :]
+    else:
+        # Absolute path
+        return path
 
 
 # def resolve_ros2_package(package_name: str) -> Optional[str]:
