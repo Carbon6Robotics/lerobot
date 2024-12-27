@@ -136,13 +136,48 @@ def construct_blueprints(dataset: LeRobotDataset, show_images: bool) -> rrb.Blue
     )
 
     # Action
-    tabs.append(rrb.TimeSeriesView(origin="/action", contents="/action/**", name="Action"))
+    tabs.append(
+        rrb.Vertical(
+            rrb.TimeSeriesView(
+                origin="/action",
+                contents="+ /action/SCHUNK_EGK_COMMAND_LEFT::position_00\n+ /state/SCHUNK_EGK_STATUS_LEFT::position_00",
+                name="Gripper Left",
+            ),
+            rrb.TimeSeriesView(
+                origin="/action",
+                contents="+ /action/SCHUNK_EGK_COMMAND_RIGHT::position_00\n+ /state/SCHUNK_EGK_STATUS_RIGHT::position_00",
+                name="Gripper Right",
+            ),
+            # grid_columns=1,
+            name="Gripper",
+        )
+    )
 
     # Next
     tabs.append(rrb.TimeSeriesView(origin="/next", contents="/next/**", name="Next"))
 
     # State
-    tabs.append(rrb.TimeSeriesView(origin="/state", contents="/state/**", name="State"))
+    tabs.append(
+        rrb.Grid(
+            *[
+                rrb.TimeSeriesView(
+                    origin="/state",
+                    contents=f"+ /state/DSR_STATUS_LEFT::position_0{i}\n+ /action/DSR_COMMAND_LEFT::position_0{i}",
+                    name=f"LEFT Joint {i} State & Action",
+                )
+                for i in range(0, 6)
+            ],
+            *[
+                rrb.TimeSeriesView(
+                    origin="/state",
+                    contents=f"+ /state/DSR_STATUS_RIGHT::position_0{i}\n+ /action/DSR_COMMAND_RIGHT::position_0{i}",
+                    name=f"RIGHT Joint {i} State & Action",
+                )
+                for i in range(0, 6)
+            ],
+            name="Joint",
+        )
+    )
 
     # 3D-model
     tabs.append(rrb.Spatial3DView(contents="/**", name="Robot"))
