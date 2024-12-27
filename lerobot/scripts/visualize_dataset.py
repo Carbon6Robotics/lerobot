@@ -103,6 +103,62 @@ def to_hwc_uint8_numpy(chw_float32_torch: torch.Tensor) -> np.ndarray:
     return hwc_uint8_numpy
 
 
+def construct_blueprints(dataset: LeRobotDataset, show_images: bool) -> rrb.Blueprint:
+    tabs = []
+
+    # Tab for images
+    if show_images:
+        tabs = [
+            rrb.Grid(
+                *[
+                    rrb.Spatial2DView(
+                        origin=key.replace(".", "/"),  # join upto last part
+                        contents=key.replace(".", "/"),  # full entity path
+                    )
+                    for key in dataset.meta.camera_keys
+                ],
+                name="Camera Images",
+            )
+        ]
+
+    # Tab for video
+    tabs.append(
+        rrb.Grid(
+            *[
+                rrb.Spatial2DView(
+                    origin=key.replace(".", "/").replace("images", "videos"),
+                    contents=key.replace(".", "/").replace("images", "videos"),
+                )
+                for key in dataset.meta.video_keys
+            ],
+            name="Camera Videos",
+        )
+    )
+
+    # Action
+    tabs.append(rrb.TimeSeriesView(origin="/action", contents="/action/**", name="Action"))
+
+    # Next
+    tabs.append(rrb.TimeSeriesView(origin="/next", contents="/next/**", name="Next"))
+
+    # State
+    tabs.append(rrb.TimeSeriesView(origin="/state", contents="/state/**", name="State"))
+
+    # 3D-model
+    tabs.append(rrb.Spatial3DView(contents="/**", name="Robot"))
+
+    # Construct blueprint
+    blueprint = rrb.Blueprint(
+        rrb.Tabs(
+            *tabs,
+            name="Data",
+            active_tab=1 if show_images else 0,  # always default to video tab
+        ),
+    )
+
+    return blueprint
+
+
 def visualize_dataset(
     dataset: LeRobotDataset,
     episode_index: int,
@@ -112,6 +168,7 @@ def visualize_dataset(
     web_port: int = 9090,
     ws_port: int = 9087,
     model_dir: Path | None = None,
+    show_images: bool = False,
     # save: bool = False,
     # output_dir: Path | None = None,
 ) -> Path | None:
@@ -119,7 +176,6 @@ def visualize_dataset(
     #     assert (
     #         output_dir is not None
     #     ), "Set an output directory where to write .rrd files with `--output-dir path/to/directory`."
-
     repo_id = dataset.repo_id
 
     logging.info("Loading dataloader")
@@ -137,28 +193,15 @@ def visualize_dataset(
         raise ValueError(mode)
 
     # Setting up rerun blueprints
-    my_blueprint = rrb.Blueprint(
-        rrb.Tabs(
-            rrb.Grid(
-                *[
-                    rrb.Spatial2DView(
-                        origin=key.replace(".", "/"),  # join upto last part
-                        contents=key.replace(".", "/"),  # full entity path
-                    )
-                    for key in dataset.meta.camera_keys
-                ],
-                name="Camera Images",
-            ),
-            rrb.TimeSeriesView(origin="/action", contents="/action/**", name="Action"),
-            rrb.TimeSeriesView(origin="/next", contents="/next/**", name="Next"),
-            rrb.TimeSeriesView(origin="/state", contents="/state/**", name="State"),
-            rrb.Spatial3DView(contents="/**", name="Robot"),
-            name="Data",
-        ),
-    )
+    my_blueprint = construct_blueprints(dataset, show_images)
 
-    rr.init(f"{repo_id}/episode_{episode_index}", default_blueprint=my_blueprint)
-    rr.serve_web(open_browser=True, web_port=web_port, ws_port=ws_port, default_blueprint=my_blueprint)
+    rr.init(f"{repo_id}/episode_{episode_index:06}", default_blueprint=my_blueprint)
+    rr.serve_web(
+        open_browser=True,
+        web_port=web_port,
+        ws_port=ws_port,
+        default_blueprint=my_blueprint,
+    )
 
     logging.info("Logging to Rerun")
 
@@ -173,8 +216,9 @@ def visualize_dataset(
             rr.set_time_seconds("timestamp", batch["timestamp"][i].item())
 
             # display each camera image
-            for key in dataset.meta.camera_keys:
-                rr.log(key.replace(".", "/"), rr.Image(to_hwc_uint8_numpy(batch[key][i])))
+            if show_images:
+                for key in dataset.meta.camera_keys:
+                    rr.log(key.replace(".", "/"), rr.Image(to_hwc_uint8_numpy(batch[key][i])))
 
             # display each dimension of action space (e.g. actuators command)
             if "action" in batch:
@@ -210,6 +254,29 @@ def visualize_dataset(
 
             if "next.success" in batch:
                 rr.log("next/success", rr.Scalar(batch["next.success"][i].item()))
+
+    # Log video asset which is referred to by frame references.
+    for video_key in dataset.meta.video_keys:
+        video_asset = rr.AssetVideo(
+            path=str(dataset.root)
+            + "/"
+            + dataset.meta.video_path.format(
+                **{"episode_chunk": 0, "video_key": video_key, "episode_index": episode_index}
+            )
+        )
+        rr.log(f"{video_key.replace('.','/').replace('images','videos')}", video_asset, static=True)
+
+        # Send automatically determined video frame timestamps.
+        frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+        rr.send_columns(
+            f"{video_key.replace('.','/').replace('images','videos')}",
+            # Note timeline values don't have to be the same as the video timestamps.
+            times=[rr.TimeNanosColumn("timestamp", frame_timestamps_ns)],
+            components=[
+                rr.VideoFrameReference.indicator(),
+                rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns),
+            ],
+        )
 
     rr.send_blueprint(blueprint=my_blueprint)
 
@@ -300,10 +367,17 @@ def main():
     )
     parser.add_argument(
         "--model-dir",
-        dest="model_dir",
         type=str,
         help="Path to model directory, e.g., ./models",
     )
+    parser.add_argument(
+        "--show-images",
+        # type=bool,
+        default=False,
+        action="store_true",
+        help="Rerun to show individual images from the dataset. This takes a lot of memory and time to load!",
+    )
+
     # parser.add_argument(
     #     "--save",
     #     type=int,
@@ -323,7 +397,7 @@ def main():
 
     # Load data set
     logging.info("Loading dataset")
-    dataset = LeRobotDataset(repo_id, root=root, local_files_only=local_files_only)
+    dataset = LeRobotDataset(repo_id, root=root, local_files_only=local_files_only, tolerance_s=0.1)
 
     # Visualize data
     visualize_dataset(dataset, **vars(args))
