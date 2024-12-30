@@ -412,6 +412,12 @@ def main():
         action="store_true",
         help="Rerun to show individual images from the dataset. This takes a lot of memory and time to load!",
     )
+    parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.1,
+        help="Allowed tolerance on the discrepency between desired timestamp and retrieved image from the video",
+    )
 
     # parser.add_argument(
     #     "--save",
@@ -428,11 +434,12 @@ def main():
     kwargs = vars(args)
     repo_id = kwargs.pop("repo_id")
     root = kwargs.pop("root")
+    tolerance = kwargs.pop("tolerance")
     local_files_only = kwargs.pop("local_files_only")
 
     # Load data set
     logging.info("Loading dataset")
-    dataset = LeRobotDataset(repo_id, root=root, local_files_only=local_files_only, tolerance_s=0.1)
+    dataset = LeRobotDataset(repo_id, root=root, local_files_only=local_files_only, tolerance_s=tolerance)
 
     # Visualize data
     visualize_dataset(dataset, **vars(args))
