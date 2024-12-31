@@ -175,19 +175,19 @@ def log_train_info(logger: Logger, info, step, cfg, dataset, is_online):
     num_episodes = num_samples / avg_samples_per_ep
     num_epochs = num_samples / dataset.num_frames
     log_items = [
-        f"step:{format_big_number(step)}",
+        f"step:{format_big_number(step):4}",
         # number of samples seen during training
-        f"smpl:{format_big_number(num_samples)}",
+        f"smpl:{format_big_number(num_samples):4}",
         # number of episodes seen during training
-        f"ep:{format_big_number(num_episodes)}",
+        f"ep:{format_big_number(num_episodes):4}",
         # number of time all unique samples are seen
-        f"epch:{num_epochs:.2f}",
-        f"loss:{loss:.3f}",
-        f"grdn:{grad_norm:.3f}",
-        f"lr:{lr:0.1e}",
+        f"epch:{num_epochs:5.2f}",
+        f"loss:{loss:8.6f}",
+        f"grdn:{grad_norm:5.3f}",
+        f"lr:{lr:8.1e}",
         # in seconds
-        f"updt_s:{update_s:.3f}",
-        f"data_s:{dataloading_s:.3f}",  # if not ~0, you are bottlenecked by cpu or io
+        f"updt_s:{update_s:5.3f}",
+        f"data_s:{dataloading_s:5.3f}",  # if not ~0, you are bottlenecked by cpu or io
     ]
     logging.info(" ".join(log_items))
 
@@ -449,11 +449,12 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
         step += 1
         offline_step += 1  # noqa: SIM113
 
+    logging.info("End of training")
+    return
+
     if cfg.training.online_steps == 0:
         if eval_env:
             eval_env.close()
-        logging.info("End of training")
-        return
 
     # Online training.
 
