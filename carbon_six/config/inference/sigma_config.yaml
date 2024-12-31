@@ -1,0 +1,63 @@
+
+# Path to pretrained model
+model: /home/joon/Workspace/lerobot/outputs/train/2024-12-30/13-15-37_real_world_diffusion_default/checkpoints/last/pretrained_model
+
+# network input/output, must be same as metadata that it was trained on
+features:
+  observation.images.left_wrist_rgb:
+    shape:
+      - 640
+      - 960
+      - 3
+    names:
+      - height
+      - width
+      - channel
+  observation.images.right_wrist_rgb:
+    shape:
+      - 640
+      - 960
+      - 3
+    names:
+      - height
+      - width
+      - channel
+  observation.state:
+    shape:
+      - 14
+    names:
+      motors:
+        - DSR_COMMAND_LEFT::position_00
+        - DSR_COMMAND_LEFT::position_01
+        - DSR_COMMAND_LEFT::position_02
+        - DSR_COMMAND_LEFT::position_03
+        - DSR_COMMAND_LEFT::position_04
+        - DSR_COMMAND_LEFT::position_05
+        - SCHUNK_EGK_COMMAND_LEFT::position_00
+        - DSR_COMMAND_RIGHT::position_00
+        - DSR_COMMAND_RIGHT::position_01
+        - DSR_COMMAND_RIGHT::position_02
+        - DSR_COMMAND_RIGHT::position_03
+        - DSR_COMMAND_RIGHT::position_04
+        - DSR_COMMAND_RIGHT::position_05
+        - SCHUNK_EGK_COMMAND_RIGHT::position_00
+  action:
+    shape:
+      - 14
+    names:
+      motors:
+        - DSR_COMMAND_LEFT::position_00
+        - DSR_COMMAND_LEFT::position_01
+        - DSR_COMMAND_LEFT::position_02
+        - DSR_COMMAND_LEFT::position_03
+        - DSR_COMMAND_LEFT::position_04
+        - DSR_COMMAND_LEFT::position_05
+        - SCHUNK_EGK_COMMAND_LEFT::position_00
+        - DSR_COMMAND_RIGHT::position_00
+        - DSR_COMMAND_RIGHT::position_01
+        - DSR_COMMAND_RIGHT::position_02
+        - DSR_COMMAND_RIGHT::position_03
+        - DSR_COMMAND_RIGHT::position_04
+        - DSR_COMMAND_RIGHT::position_05
+        - SCHUNK_EGK_COMMAND_RIGHT::position_00
+fps: 50
