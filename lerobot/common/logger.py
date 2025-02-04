@@ -19,6 +19,7 @@
 """
 
 import logging
+import pickle
 import os
 import re
 from glob import glob
@@ -93,6 +94,8 @@ class Logger:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.checkpoints_dir = self.get_checkpoints_dir(log_dir)
+        self.log_dicts_dir = self.get_log_dicts_dir(log_dir)
+        Path(self.log_dicts_dir).mkdir(parents=True, exist_ok=True)
         self.last_checkpoint_dir = self.get_last_checkpoint_dir(log_dir)
         self.last_pretrained_model_dir = self.get_last_pretrained_model_dir(log_dir)
 
@@ -136,6 +139,11 @@ class Logger:
     def get_checkpoints_dir(cls, log_dir: str | Path) -> Path:
         """Given the log directory, get the sub-directory in which checkpoints will be saved."""
         return Path(log_dir) / "checkpoints"
+    
+    @classmethod
+    def get_log_dicts_dir(cls, log_dir: str | Path) -> Path:
+        """Given the log directory, get the sub-directory in which checkpoints will be saved."""
+        return Path(log_dir) / "log_dicts"
 
     @classmethod
     def get_last_checkpoint_dir(cls, log_dir: str | Path) -> Path:
@@ -238,6 +246,15 @@ class Logger:
                     )
                     continue
                 self._wandb.log({f"{mode}/{k}": v}, step=step)
+        else:
+            log_dict = {}
+            for k,v in d.items():
+                if not isinstance(v, (int, float, str)):
+                    continue
+                else:
+                    log_dict[k] = v
+            with open(os.path.join(self.log_dicts_dir, f"{step:06d}.pkl"), "wb") as f:
+                pickle.dump(d, f)
 
     def log_video(self, video_path: str, step: int, mode: str = "train"):
         assert mode in {"train", "eval"}
