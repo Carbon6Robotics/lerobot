@@ -1,0 +1,129 @@
+# @package _global_
+
+# Defaults for training for the PushT dataset as per https://github.com/real-stanford/diffusion_policy.
+# Note: We do not track EMA model weights as we discovered it does not improve the results. See
+#       https://github.com/huggingface/lerobot/pull/134 for more details.
+
+seed: 100000
+dataset_repo_id: dataset-2024-02-04-labelmaker-v2
+
+override_dataset_stats:
+  observation.images.top_rgb:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+  observation.images.right_wrist_rgb:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+  observation.images.left_wrist_rgb:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+
+# override_dataset_stats:
+#   # TODO(rcadene, alexander-soare): should we remove image stats as well? do we use a pretrained vision model?
+#   observation.image:
+#     mean: [[[0.5]], [[0.5]], [[0.5]]]  # (c,1,1)
+#     std: [[[0.5]], [[0.5]], [[0.5]]]  # (c,1,1)
+#   # TODO(rcadene, alexander-soare): we override state and action stats to use the same as the pretrained model
+#   # from the original codebase, but we should remove these and train our own pretrained model
+#   observation.state:
+#     min: [13.456424, 32.938293]
+#     max: [496.14618, 510.9579]
+#   action:
+#     min: [12.0, 25.0]
+#     max: [511.0, 511.0]
+
+training:
+  offline_steps: 1000000
+  online_steps: 0
+  eval_freq: -1 # no eval during training since no simulator
+  save_freq: 1000
+  log_freq: 100
+  save_checkpoint: true
+
+  batch_size: 16
+  grad_clip_norm: 10
+  lr: 1.0e-5
+  lr_backbone: 1e-5
+  weight_decay: 1e-4
+  lr_scheduler: cosine
+  lr_warmup_steps: 500
+  adam_betas: [0.95, 0.999] 
+  adam_eps: 1.0e-8
+  adam_weight_decay: 1.0e-6
+  online_steps_between_rollouts: 1
+
+  delta_timestamps:
+    #observation.images.left_wrist_rgb: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
+    #observation.images.right_wrist_rgb: [-0.04, 0.0] #"[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
+    #observation.images.top_rgb: [-0.04, 0.0] #"[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
+    #observation.state: [-0.04, 0.0] #"[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1)]"
+    #action: "[i / ${fps} for i in range(1 - ${policy.n_obs_steps}, 1 - ${policy.n_obs_steps} + ${policy.horizon})]"
+    action: "[i * 0.04 for i in range(${policy.chunk_size})]"
+    #action: "[i * 0.04 for i in range(1 - ${policy.n_obs_steps}, 1 - ${policy.n_obs_steps} + ${policy.horizon})]"
+
+  # The original implementation doesn't sample frames for the last 7 steps,
+  # which avoids excessive padding and leads to improved training results.
+  drop_n_last_frames: 7  # ${policy.horizon} - ${policy.n_action_steps} - ${policy.n_obs_steps} + 1
+
+eval:
+  n_episodes: 176
+  batch_size: 100
+
+policy:
+  name: act
+
+  # Input / output structure.
+  n_obs_steps: 1
+  chunk_size: 20
+  n_action_steps: 20
+
+  input_shapes:
+    # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
+    #observation.images.left_wrist_rgb: [3, 768, 1024]
+    observation.images.top_rgb: [3, 480, 640]
+    observation.images.right_wrist_rgb: [3, 480, 640]
+    observation.images.left_wrist_rgb: [3, 480, 640]
+    observation.state: ["${env.state_dim}"]
+  output_shapes:
+    action: ["${env.action_dim}"]
+
+  # Normalization / Unnormalization
+  input_normalization_modes:
+    observation.images.top_rgb: mean_std
+    observation.images.left_wrist_rgb: mean_std
+    observation.images.right_wrist_rgb: mean_std
+    observation.state: min_max
+  output_normalization_modes:
+    action: min_max
+
+  # Architecture.
+  # Vision backbone.
+  vision_backbone: resnet18
+  pretrained_backbone_weights: ResNet18_Weights.IMAGENET1K_V1
+  replace_final_stride_with_dilation: false
+  # Transformer layers.
+  pre_norm: false
+  dim_model: 512
+  n_heads: 8
+  dim_feedforward: 3200
+  feedforward_activation: relu
+  n_encoder_layers: 4
+  # Note: Although the original ACT implementation has 7 for `n_decoder_layers`, there is a bug in the code
+  # that means only the first layer is used. Here we match the original implementation by setting this to 1.
+  # See this issue https://github.com/tonyzhaozh/act/issues/25#issue-2258740521.
+  n_decoder_layers: 1
+  # VAE.
+  use_vae: false
+  latent_dim: 32
+  n_vae_encoder_layers: 4
+
+  # Inference.
+  temporal_ensemble_coeff: null
+  use_separate_rgb_encoder_per_camera: true
+
+  # Training and loss computation.
+  dropout: 0.1
+  kl_weight: 10.0
