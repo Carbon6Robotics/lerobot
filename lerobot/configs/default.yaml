@@ -1,7 +1,7 @@
 defaults:
   - _self_
   - env: sigma_real
-  - policy: diffusion_sigma
+  - policy: act_sigma
 
 hydra:
   run:
@@ -27,8 +27,8 @@ seed: ???
 # keys common between the datasets are kept. Each dataset gets and additional transform that inserts the
 # "dataset_index" into the returned item. The index mapping is made according to the order in which the
 # datsets are provided.
-dataset_repo_id: dataset-2024-12-27-jointspace
-root: /home/joon/Downloads/training_data/dataset-2024-12-27-jointspace #path
+dataset_repo_id: dataset-2024-02-03-labelmaker-v2
+root: /home/terrysuh/datasets/hugging_face_dataset/label_maker_v2 #path
 local_files_only: true
 video_backend: pyav
 

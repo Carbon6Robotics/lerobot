@@ -105,30 +105,33 @@ class ACTPolicy(
         """
         self.eval()
 
-        batch = self.normalize_inputs(batch)
-        if len(self.expected_image_keys) > 0:
-            batch = dict(batch)  # shallow copy so that adding a key doesn't modify the original
-            batch["observation.images"] = torch.stack([batch[k] for k in self.expected_image_keys], dim=-4)
+        if batch == None:
+            return self._action_queue.popleft()
+        else:
+            batch = self.normalize_inputs(batch)
+            if len(self.expected_image_keys) > 0:
+                batch = dict(batch)  # shallow copy so that adding a key doesn't modify the original
+                batch["observation.images"] = torch.stack([batch[k] for k in self.expected_image_keys], dim=-4)
 
-        # If we are doing temporal ensembling, do online updates where we keep track of the number of actions
-        # we are ensembling over.
-        if self.config.temporal_ensemble_coeff is not None:
-            actions = self.model(batch)[0]  # (batch_size, chunk_size, action_dim)
-            actions = self.unnormalize_outputs({"action": actions})["action"]
-            action = self.temporal_ensembler.update(actions)
-            return action
+            # If we are doing temporal ensembling, do online updates where we keep track of the number of actions
+            # we are ensembling over.
+            if self.config.temporal_ensemble_coeff is not None:
+                actions = self.model(batch)[0]  # (batch_size, chunk_size, action_dim)
+                actions = self.unnormalize_outputs({"action": actions})["action"]
+                action = self.temporal_ensembler.update(actions)
+                return action
 
-        # Action queue logic for n_action_steps > 1. When the action_queue is depleted, populate it by
-        # querying the policy.
-        if len(self._action_queue) == 0:
-            actions = self.model(batch)[0][:, : self.config.n_action_steps]
+            # Action queue logic for n_action_steps > 1. When the action_queue is depleted, populate it by
+            # querying the policy.
+            if len(self._action_queue) == 0:
+                actions = self.model(batch)[0][:, : self.config.n_action_steps]
 
-            # TODO(rcadene): make _forward return output dictionary?
-            actions = self.unnormalize_outputs({"action": actions})["action"]
+                # TODO(rcadene): make _forward return output dictionary?
+                actions = self.unnormalize_outputs({"action": actions})["action"]
 
-            # `self.model.forward` returns a (batch_size, n_action_steps, action_dim) tensor, but the queue
-            # effectively has shape (n_action_steps, batch_size, *), hence the transpose.
-            self._action_queue.extend(actions.transpose(0, 1))
+                # `self.model.forward` returns a (batch_size, n_action_steps, action_dim) tensor, but the queue
+                # effectively has shape (n_action_steps, batch_size, *), hence the transpose.
+                self._action_queue.extend(actions.transpose(0, 1))
         return self._action_queue.popleft()
 
     def forward(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:

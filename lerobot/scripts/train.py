@@ -21,6 +21,8 @@ from copy import deepcopy
 from pathlib import Path
 from pprint import pformat
 from threading import Lock
+import cv2
+import os
 
 import hydra
 import numpy as np
@@ -424,8 +426,36 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
         batch = next(dl_iter)
         dataloading_s = time.perf_counter() - start_time
 
+
         for key in batch:
+            #print(key)
             batch[key] = batch[key].to(device, non_blocking=True)
+
+        """
+        os.makedirs("test", exist_ok=True)
+        batch_size = batch["observation.images.right_wrist_rgb"].shape[0]
+        time_size = batch["observation.images.right_wrist_rgb"].shape[1]
+        for i in range(batch_size):
+            for j in range(time_size):
+                image = batch[
+                    "observation.images.right_wrist_rgb"][
+                        i][j].cpu().numpy().transpose((1,2,0))
+                image = image * 255
+                #image = image.astype(np.uint8)
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(f"test/{i:04d}_{j:02d}.png", image)
+                print(f"{i:04d}_{j:02d}")
+                state = batch["observation.state"][i][j].cpu().numpy()
+                print(state)
+        """
+
+        #print(batch["timestamp"])
+        #print(batch["episode_index"])
+        #print(batch["timestamp"])
+        #print(batch["index"])
+        #print(batch["observation.images.right_wrist_rgb"].shape)
+        #print(batch["observation.state"].shape)
+        #print(batch["action"].shape)
 
         train_info = update_policy(
             policy,
