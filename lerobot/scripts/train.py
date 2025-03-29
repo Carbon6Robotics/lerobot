@@ -120,6 +120,9 @@ def update_policy(
     start_time = time.perf_counter()
     device = get_device_from_parameters(policy)
     policy.train()
+
+    optimizer.param_groups[0]["lr"] = 1e-5
+    
     with torch.autocast(device_type=device.type) if use_amp else nullcontext():
         output_dict = policy.forward(batch)
         # TODO(rcadene): policy.unnormalize_outputs(out_dict)
@@ -144,12 +147,15 @@ def update_policy(
 
     optimizer.zero_grad()
 
-    if lr_scheduler is not None:
+    """    if lr_scheduler is not None:
         lr_scheduler.step()
+    """
 
     if isinstance(policy, PolicyWithUpdate):
         # To possibly update an internal buffer (for instance an Exponential Moving Average like in TDMPC).
         policy.update()
+        
+    #logging.info(optimizer.param_groups[0]["lr"])
 
     info = {
         "loss": loss.item(),
@@ -243,7 +249,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
         raise NotImplementedError()
 
     init_logging()
-    logging.info(pformat(OmegaConf.to_container(cfg)))
+    #logging.info(pformat(OmegaConf.to_container(cfg)))
 
     if cfg.training.online_steps > 0 and isinstance(cfg.dataset_repo_id, ListConfig):
         raise NotImplementedError("Online training with LeRobotMultiDataset is not implemented.")
@@ -344,6 +350,8 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     if cfg.resume:
         step = logger.load_last_training_state(optimizer, lr_scheduler)
 
+    cfg.training.offline_steps=2000000
+
     num_learnable_params = sum(p.numel() for p in policy.parameters() if p.requires_grad)
     num_total_params = sum(p.numel() for p in policy.parameters())
 
@@ -418,6 +426,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
 
     policy.train()
     offline_step = 0
+    start_time_whole = time.time()
     for _ in range(step, cfg.training.offline_steps):
         if offline_step == 0:
             logging.info("Start offline training on a fixed dataset")
@@ -425,6 +434,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
         start_time = time.perf_counter()
         batch = next(dl_iter)
         dataloading_s = time.perf_counter() - start_time
+
 
 
         for key in batch:
@@ -449,28 +459,20 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
                 print(state)
         """
 
-        #print(batch["timestamp"])
-        #print(batch["episode_index"])
-        #print(batch["timestamp"])
-        #print(batch["index"])
-        #print(batch["observation.images.right_wrist_rgb"].shape)
-        #print(batch["observation.state"].shape)
-        #print(batch["action"].shape)
-
         train_info = update_policy(
             policy,
             batch,
             optimizer,
             cfg.training.grad_clip_norm,
             grad_scaler=grad_scaler,
-            lr_scheduler=lr_scheduler,
+            lr_scheduler=None,
             use_amp=cfg.use_amp,
         )
-
         train_info["dataloading_s"] = dataloading_s
 
         if step % cfg.training.log_freq == 0:
             log_train_info(logger, train_info, step, cfg, offline_dataset, is_online=False)
+            print(time.time() - start_time_whole)
 
         # Note: evaluate_and_checkpoint_if_needed happens **after** the `step`th training update has completed,
         # so we pass in step + 1.

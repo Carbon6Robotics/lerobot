@@ -5,18 +5,18 @@
 #       https://github.com/huggingface/lerobot/pull/134 for more details.
 
 seed: 100000
-dataset_repo_id: dataset-2024-02-04-labelmaker-v2
+dataset_repo_id: ram_retraction
 
 override_dataset_stats:
-  observation.images.top_rgb:
+  observation.images.left_rgb:
     # stats from imagenet, since we use a pretrained vision model
     mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
     std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
-  observation.images.right_wrist_rgb:
+  observation.images.right_rgb:
     # stats from imagenet, since we use a pretrained vision model
     mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
     std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
-  observation.images.left_wrist_rgb:
+  observation.images.wrist_rgb:
     # stats from imagenet, since we use a pretrained vision model
     mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
     std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
@@ -39,7 +39,7 @@ training:
   offline_steps: 1000000
   online_steps: 0
   eval_freq: -1 # no eval during training since no simulator
-  save_freq: 1000
+  save_freq: 10000
   log_freq: 100
   save_checkpoint: true
 
@@ -77,24 +77,24 @@ policy:
 
   # Input / output structure.
   n_obs_steps: 1
-  chunk_size: 20
-  n_action_steps: 20
+  chunk_size: 100
+  n_action_steps: 50
 
   input_shapes:
     # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
     #observation.images.left_wrist_rgb: [3, 768, 1024]
-    observation.images.top_rgb: [3, 480, 640]
-    observation.images.right_wrist_rgb: [3, 480, 640]
-    observation.images.left_wrist_rgb: [3, 480, 640]
+    observation.images.left_rgb: [3, 480, 640]
+    observation.images.right_rgb: [3, 480, 640]
+    observation.images.wrist_rgb: [3, 480, 640]
     observation.state: ["${env.state_dim}"]
   output_shapes:
     action: ["${env.action_dim}"]
 
   # Normalization / Unnormalization
   input_normalization_modes:
-    observation.images.top_rgb: mean_std
-    observation.images.left_wrist_rgb: mean_std
-    observation.images.right_wrist_rgb: mean_std
+    observation.images.left_rgb: mean_std
+    observation.images.right_rgb: mean_std
+    observation.images.wrist_rgb: mean_std
     observation.state: min_max
   output_normalization_modes:
     action: min_max
